@@ -35,6 +35,8 @@ import optparse, re, sys, codecs, types
 try: from textwrap import wrap
 except: pass
 
+from .math_expression import generate_latex_math_expression
+
 # Use Unicode characters instead of their ascii psuedo-replacements
 UNICODE_SNOB = 0
 
@@ -235,6 +237,7 @@ class HTML2Text(HTMLParser.HTMLParser):
         self.drop_white_space = 0
         self.inheader = False
         self.inmath = False
+        self.insup = False
         self.abbr_title = None  # current abbreviation definition
         self.abbr_data = None  # last inner HTML (for abbr being defined)
         self.abbr_list = {}  # stack of abbreviations to write later
@@ -412,9 +415,18 @@ class HTML2Text(HTMLParser.HTMLParser):
         if tag == 'math':
             if start:
                 self.inmath = True
-                self.o(attrs["alttext"])
+                self.o(generate_latex_math_expression(attrs["alttext"]))
             else:
                 self.inmath = False
+                return
+        
+        # handle super script tag
+        if tag == 'sup':
+            if start:
+                self.insup = True
+                self.o('')
+            else:
+                self.insup = False
                 return
 
         if tag in ['p', 'div']:
@@ -671,7 +683,7 @@ class HTML2Text(HTMLParser.HTMLParser):
     def handle_data(self, data):
         if r'\/script>' in data: self.quiet -= 1
 
-        if self.inmath:
+        if self.inmath or self.insup:
             return
 
         if self.style:

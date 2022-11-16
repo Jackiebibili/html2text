@@ -1,7 +1,7 @@
-import html2text
+from .html2text import HTML2Text
 
-def convertHTMLtoText(html: str):
-   h = html2text.HTML2Text()
+def convertHTMLtoText(html: str)->str:
+   h = HTML2Text()
    h.ignore_links = True
    h.ignore_images = True
    h.feed(html)
