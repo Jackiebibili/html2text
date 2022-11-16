@@ -195,8 +195,8 @@ class HTML2Text(HTMLParser.HTMLParser):
         self.ignore_emphasis = IGNORE_EMPHASIS
         self.google_doc = False
         self.ul_item_mark = '*'
-        self.emphasis_mark = '_'
-        self.strong_mark = '**'
+        self.emphasis_mark = ''
+        self.strong_mark = ''
 
         if out is None:
             self.out = self.outtextf
@@ -234,6 +234,7 @@ class HTML2Text(HTMLParser.HTMLParser):
         self.emphasis = 0
         self.drop_white_space = 0
         self.inheader = False
+        self.inmath = False
         self.abbr_title = None  # current abbreviation definition
         self.abbr_data = None  # last inner HTML (for abbr being defined)
         self.abbr_list = {}  # stack of abbreviations to write later
@@ -376,6 +377,7 @@ class HTML2Text(HTMLParser.HTMLParser):
 
     def handle_tag(self, tag, attrs, start):
         #attrs = fixattrs(attrs)
+        # print(tag)
         if attrs is None:
             attrs = {}
         else:
@@ -406,6 +408,15 @@ class HTML2Text(HTMLParser.HTMLParser):
                 self.inheader = False
                 return # prevent redundant emphasis marks on headers
 
+        # handle math tag
+        if tag == 'math':
+            if start:
+                self.inmath = True
+                self.o(attrs["alttext"])
+            else:
+                self.inmath = False
+                return
+
         if tag in ['p', 'div']:
             if self.google_doc:
                 if start and google_has_height(tag_style):
@@ -433,13 +444,13 @@ class HTML2Text(HTMLParser.HTMLParser):
         if tag in ["body"]:
             self.quiet = 0 # sites like 9rules.com never close <head>
 
-        if tag == "blockquote":
-            if start:
-                self.p(); self.o('> ', 0, 1); self.start = 1
-                self.blockquote += 1
-            else:
-                self.blockquote -= 1
-                self.p()
+        # if tag == "blockquote":
+        #     if start:
+        #         self.p(); self.o('> ', 0, 1); self.start = 1
+        #         self.blockquote += 1
+        #     else:
+        #         self.blockquote -= 1
+        #         self.p()
 
         if tag in ['em', 'i', 'u'] and not self.ignore_emphasis: self.o(self.emphasis_mark)
         if tag in ['strong', 'b'] and not self.ignore_emphasis: self.o(self.strong_mark)
@@ -454,7 +465,7 @@ class HTML2Text(HTMLParser.HTMLParser):
                 # handle some font attributes, but leave headers clean
                 self.handle_emphasis(start, tag_style, parent_style)
 
-        if tag in ["code", "tt"] and not self.pre: self.o('`') #TODO: `` `this` ``
+        if tag in ["code", "tt"] and not self.pre: self.o('') #TODO: `` `this` ``
         if tag == "abbr":
             if start:
                 self.abbr_title = None
@@ -604,7 +615,7 @@ class HTML2Text(HTMLParser.HTMLParser):
                 if not self.list:
                     bq += "    "
                 #else: list content is already partially indented
-                for i in xrange(len(self.list)):
+                for i in range(len(self.list)):
                     bq += "    "
                 data = data.replace("\n", "\n"+bq)
 
@@ -659,6 +670,9 @@ class HTML2Text(HTMLParser.HTMLParser):
 
     def handle_data(self, data):
         if r'\/script>' in data: self.quiet -= 1
+
+        if self.inmath:
+            return
 
         if self.style:
             self.style_def.update(dumb_css_parser(data))
